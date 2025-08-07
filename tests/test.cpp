@@ -1,22 +1,41 @@
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/benchmark/catch_benchmark.hpp>
-
 #include <cstdint>
+#include <simple-fsm/simple-fsm.hpp>
 
-uint64_t fibonacci(uint64_t number) {
-    return number < 2 ? number : fibonacci(number - 1) + fibonacci(number - 2);
-}
+enum BasicStates {
+  START,
+  WORK,
+  ERROR,
+  END,
+};
 
-TEST_CASE("Fibonacci") {
-    REQUIRE(fibonacci(5) == 5);
+TEST_CASE("Basic") {
+  using namespace SimpleFSM;
+  const auto states = FSMStateMap<BasicStates>{
+      {START, std::make_shared<FSMSimpleState<BasicStates>>(
+                  [](FSMStateMachine<BasicStates>* process) {
+                    process->goToState(WORK);
+                  })},
+      {WORK, std::make_shared<FSMSimpleState<BasicStates>>(
+                 [](FSMStateMachine<BasicStates>* process) {
+                    process->goToState(END);
+                 })},
+      {ERROR, std::make_shared<FSMSimpleState<BasicStates>>(
+                  [](FSMStateMachine<BasicStates>* process) {
 
-    REQUIRE(fibonacci(20) == 6'765);
-    BENCHMARK("fibonacci 20") {
-        return fibonacci(20);
-    };
+                  })},
+      {END, std::make_shared<FSMSimpleState<BasicStates>>(
+                [](FSMStateMachine<BasicStates>* process) {
 
-    REQUIRE(fibonacci(25) == 75'025);
-    BENCHMARK("fibonacci 25") {
-        return fibonacci(25);
-    };
+                })},
+  };
+
+  FSMStateMachine<BasicStates> stateMachine(START, states);
+  REQUIRE(stateMachine.getCurrentState() == START);
+  stateMachine.run();
+  REQUIRE(stateMachine.getCurrentState() == WORK);
+  stateMachine.run();
+  REQUIRE(stateMachine.getCurrentState() == END);
+  stateMachine.run();
+  REQUIRE(stateMachine.getCurrentState() == END);
 }
